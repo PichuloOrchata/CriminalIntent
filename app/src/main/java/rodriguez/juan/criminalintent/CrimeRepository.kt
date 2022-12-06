@@ -2,13 +2,19 @@ package rodriguez.juan.criminalintent
 
 import android.content.Context
 import androidx.room.Room
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.GlobalScope
 import rodriguez.juan.criminalintent.database.CrimeDatabase
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
+import rodriguez.juan.criminalintent.database.migration_1_2
+import rodriguez.juan.criminalintent.database.migration_2_3
 import java.util.UUID
 
 private const val DATABASE_NAME = "crime-database"
 
 class CrimeRepository private constructor(context: Context) {
+    private val coroutineScope: CoroutineScope = GlobalScope
 
     private val database: CrimeDatabase = Room
         .databaseBuilder(
@@ -16,12 +22,22 @@ class CrimeRepository private constructor(context: Context) {
             CrimeDatabase::class.java,
             DATABASE_NAME
         )
-        .createFromAsset(DATABASE_NAME)
+        .addMigrations(migration_1_2, migration_2_3)
         .build()
 
     fun getCrimes(): Flow<List<Crime>> = database.crimeDao().getCrimes()
 
     suspend fun getCrime(id: UUID): Crime = database.crimeDao().getCrime(id)
+
+     fun updateCrime(crime: Crime) {
+         coroutineScope.launch {
+             database.crimeDao().updateCrime(crime)
+         }
+    }
+
+    suspend fun addCrime(crime: Crime) {
+        database.crimeDao().addCrime(crime)
+    }
 
     companion object {
         private var INSTANCE: CrimeRepository? = null
